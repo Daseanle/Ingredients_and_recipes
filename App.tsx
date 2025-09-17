@@ -5,7 +5,7 @@ import { EquipmentManager } from './components/EquipmentManager';
 import { CondimentsManager } from './components/CondimentsManager';
 import { RecipeCard } from './components/RecipeCard';
 import { Loader } from './components/Loader';
-import { generateRecipe } from './services/geminiService';
+import { generateRecipe } from './services/recipeService';
 import type { Recipe, PantryItem } from './types';
 import { translations } from './lib/translations';
 
@@ -223,7 +223,7 @@ const App: React.FC = () => {
               <button
                 onClick={handleGenerateRecipe}
                 disabled={isLoading}
-                className="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed transition-all duration-300 ease-in-out transform hover:scale-105 flex items-center justify-center"
+                className="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95 flex items-center justify-center"
               >
                 {isLoading ? (
                   <>
@@ -249,6 +249,7 @@ const App: React.FC = () => {
       </main>
       <footer className="text-center py-6 text-gray-500 text-sm">
         <p>{translations.footer[language]}</p>
+        <p className="mt-2">{translations.contactInfo[language]}</p>
       </footer>
     </div>
   );

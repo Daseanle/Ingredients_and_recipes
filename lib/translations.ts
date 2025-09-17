@@ -1,7 +1,7 @@
 export const translations = {
   appTitle: {
-    en: "Gemini Recipe Generator",
-    zh: "Gemini 食谱生成器"
+    en: "AI Recipe Generator",
+    zh: "AI 食谱生成器"
   },
   myPantry: {
     en: "My Pantry",
@@ -80,8 +80,8 @@ export const translations = {
     zh: "抱歉，无法生成食谱。请重试。"
   },
   footer: {
-    en: "Powered by Gemini. For inspiration only, please cook responsibly.",
-    zh: "由 Gemini 驱动。仅供灵感，请负责任地烹饪。"
+    en: "Powered by DeepSeek. For inspiration only, please cook responsibly.",
+    zh: "由 DeepSeek 驱动。仅供灵感，请负责任地烹饪。"
   },
   prepTime: {
     en: "Prep Time",
@@ -213,5 +213,9 @@ export const translations = {
       'Oyster Sauce': { en: 'Oyster Sauce', zh: '蚝油' },
       'Sriracha': { en: 'Sriracha', zh: '是拉差辣酱' },
       'Worcestershire Sauce': { en: 'Worcestershire Sauce', zh: '伍斯特酱' },
+  },
+  contactInfo: {
+    en: "For suggestions, please contact the developer on WeChat: Junshidashuai",
+    zh: "如有建议，请联系开发者微信：Junshidashuai"
   }
 };

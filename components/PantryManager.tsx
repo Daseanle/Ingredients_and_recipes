@@ -16,6 +16,7 @@ export const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, l
   const [itemQuantity, setItemQuantity] = useState('');
   const [itemExpiry, setItemExpiry] = useState('');
   const [isOpen, setIsOpen] = useState(true);
+  const [removingItems, setRemovingItems] = useState<string[]>([]);
 
   const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +35,11 @@ export const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, l
   };
 
   const handleRemoveItem = (idToRemove: string) => {
-    setItems(items.filter((item) => item.id !== idToRemove));
+    setRemovingItems(prev => [...prev, idToRemove]);
+    setTimeout(() => {
+        setItems(items => items.filter((item) => item.id !== idToRemove));
+        setRemovingItems(prev => prev.filter(id => id !== idToRemove));
+    }, 300);
   };
 
   const getExpiryInfo = (expiryDate?: string) => {
@@ -130,7 +135,7 @@ export const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, l
                         return (
                         <div
                             key={item.id}
-                            className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200"
+                            className={`flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200 transition-all duration-300 ease-in-out ${removingItems.includes(item.id) ? 'opacity-0 -translate-x-4 scale-95' : 'opacity-100 translate-x-0 scale-100'}`}
                         >
                             <div className="flex items-center gap-3">
                             <span className="font-semibold text-gray-800">{item.name}</span>

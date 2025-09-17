@@ -19,7 +19,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onCook, language
   const { title, description, ingredients, instructions, prepTime, cookTime, totalTime } = recipe;
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg overflow-hidden animate-fade-in">
+    <div className="bg-white rounded-2xl shadow-lg overflow-hidden animate-fade-in-slide-up">
       <img src={`https://source.unsplash.com/800x400/?${encodeURIComponent(title)}`} alt={title} className="w-full h-56 object-cover"/>
       <div className="p-6 md:p-8">
         <h2 className="text-3xl font-extrabold text-gray-900 mb-3">{title}</h2>

@@ -1,48 +1,14 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import type { Recipe } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-
-const recipeSchema = {
-  type: Type.OBJECT,
-  properties: {
-    title: {
-      type: Type.STRING,
-      description: "A creative and catchy title for the recipe."
-    },
-    description: {
-      type: Type.STRING,
-      description: "A short, appealing description of the dish."
-    },
-    prepTime: {
-        type: Type.STRING,
-        description: "Estimated preparation time, e.g., '15 minutes'."
-    },
-    cookTime: {
-        type: Type.STRING,
-        description: "Estimated cooking time, e.g., '30 minutes'."
-    },
-    totalTime: {
-        type: Type.STRING,
-        description: "The total combined prep and cook time, e.g., '45 minutes'."
-    },
-    ingredients: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.STRING
-      },
-      description: "A list of all necessary ingredients, including quantities."
-    },
-    instructions: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.STRING
-      },
-      description: "Step-by-step instructions for preparing the meal."
-    },
-  },
-  required: ["title", "description", "prepTime", "cookTime", "totalTime", "ingredients", "instructions"]
-};
+const recipeSchemaDescription = `{
+  "title": "string (A creative and catchy title for the recipe.)",
+  "description": "string (A short, appealing description of the dish.)",
+  "prepTime": "string (Estimated preparation time, e.g., '15 minutes'.)",
+  "cookTime": "string (Estimated cooking time, e.g., '30 minutes'.)",
+  "totalTime": "string (The total combined prep and cook time, e.g., '45 minutes'.)",
+  "ingredients": "string[] (A list of all necessary ingredients, including quantities.)",
+  "instructions": "string[] (Step-by-step instructions for preparing the meal.)"
+}`;
 
 const getDietaryInstruction = (diet: string): string => {
     switch(diet) {
@@ -93,6 +59,7 @@ const getCondimentsInstruction = (condiments: string[]): string => {
 
 
 export const generateRecipe = async (
+  apiKey: string,
   ingredients: string[],
   mealType: string,
   dietaryRestrictions: string,
@@ -102,6 +69,10 @@ export const generateRecipe = async (
   condiments: string[],
   language: 'en' | 'zh'
 ): Promise<Recipe> => {
+  if (!apiKey) {
+    throw new Error("DeepSeek API Key is missing.");
+  }
+
   const ingredientsString = ingredients.join(', ');
   const dietString = getDietaryInstruction(dietaryRestrictions);
   const timeString = getTimeInstruction(maxTotalTime);
@@ -110,19 +81,35 @@ export const generateRecipe = async (
   const cravingString = craving ? ` The user is specifically craving something like "${craving}", so try to incorporate that idea.` : '';
   const languageInstruction = language === 'zh' ? ' Please provide the entire recipe in Chinese (Simplified).' : '';
 
-  const prompt = `You are an expert chef and nutritionist focused on minimizing food waste. Create a delicious ${mealType} recipe using mainly these ingredients: ${ingredientsString}. ${condimentsString}${dietString}${timeString}${equipmentString}${cravingString} Prioritize using ingredients that are expiring soon. Be creative and ensure the recipe is easy to follow. Provide a full list of ingredients with quantities, and clear, step-by-step instructions.${languageInstruction}`;
+  const userPrompt = `You are an expert chef and nutritionist focused on minimizing food waste. Create a delicious ${mealType} recipe using mainly these ingredients: ${ingredientsString}. ${condimentsString}${dietString}${timeString}${equipmentString}${cravingString} Prioritize using ingredients that are expiring soon. Be creative and ensure the recipe is easy to follow. Provide a full list of ingredients with quantities, and clear, step-by-step instructions.${languageInstruction}`;
+
+  const systemPrompt = `You are a helpful assistant that generates recipes. You must respond with a valid JSON object that follows this structure: ${recipeSchemaDescription}. Do not include any other text, explanations, or markdown formatting around the JSON object.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: recipeSchema,
-      },
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model: "deepseek-chat",
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt }
+            ],
+            response_format: { type: "json_object" }
+        })
     });
 
-    const jsonText = response.text;
+    if (!response.ok) {
+        const errorBody = await response.json();
+        console.error("DeepSeek API Error:", errorBody);
+        throw new Error(`API request failed with status ${response.status}: ${errorBody.error?.message || 'Unknown error'}`);
+    }
+
+    const data = await response.json();
+    const jsonText = data.choices[0].message.content;
     const recipeData = JSON.parse(jsonText);
 
     if (!recipeData.title || !recipeData.ingredients || !recipeData.instructions) {
@@ -133,6 +120,6 @@ export const generateRecipe = async (
 
   } catch (error) {
     console.error("Error generating recipe:", error);
-    throw new Error("Failed to generate recipe from Gemini API.");
+    throw new Error("Failed to generate recipe from DeepSeek API.");
   }
 };
