@@ -1,10 +1,13 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Header } from './components/Header';
 import { PantryManager } from './components/PantryManager';
+import { EquipmentManager } from './components/EquipmentManager';
+import { CondimentsManager } from './components/CondimentsManager';
 import { RecipeCard } from './components/RecipeCard';
 import { Loader } from './components/Loader';
 import { generateRecipe } from './services/geminiService';
 import type { Recipe, PantryItem } from './types';
+import { translations } from './lib/translations';
 
 const App: React.FC = () => {
   const [pantryItems, setPantryItems] = useState<PantryItem[]>(() => {
@@ -16,11 +19,43 @@ const App: React.FC = () => {
       return [];
     }
   });
+   const [equipment, setEquipment] = useState<string[]>(() => {
+    try {
+      const storedEquipment = localStorage.getItem('equipment');
+      return storedEquipment ? JSON.parse(storedEquipment) : ['Oven', 'Microwave', 'Stovetop'];
+    } catch (error) {
+      console.error("Failed to parse equipment from localStorage", error);
+      return [];
+    }
+  });
+  const [condiments, setCondiments] = useState<string[]>(() => {
+    try {
+        const storedCondiments = localStorage.getItem('condiments');
+        return storedCondiments ? JSON.parse(storedCondiments) : ['Salt', 'Black Pepper', 'Olive Oil', 'Soy Sauce'];
+    } catch (error) {
+        console.error("Failed to parse condiments from localStorage", error);
+        return [];
+    }
+  });
   const [mealType, setMealType] = useState<string>('Dinner');
   const [dietaryRestrictions, setDietaryRestrictions] = useState<string>('None');
+  const [craving, setCraving] = useState<string>('');
+  const [maxTotalTime, setMaxTotalTime] = useState<string>('Any');
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [language, setLanguage] = useState<'en' | 'zh'>(() => {
+    const storedLang = localStorage.getItem('language');
+    if (storedLang === 'en' || storedLang === 'zh') {
+      return storedLang;
+    }
+    // Auto-detect browser language
+    const browserLang = navigator.language;
+    if (browserLang.startsWith('zh')) {
+      return 'zh';
+    }
+    return 'en';
+  });
 
   useEffect(() => {
     try {
@@ -30,9 +65,29 @@ const App: React.FC = () => {
     }
   }, [pantryItems]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('equipment', JSON.stringify(equipment));
+    } catch (error) {
+      console.error("Failed to save equipment to localStorage", error);
+    }
+  }, [equipment]);
+
+  useEffect(() => {
+    try {
+        localStorage.setItem('condiments', JSON.stringify(condiments));
+    } catch (error) {
+        console.error("Failed to save condiments to localStorage", error);
+    }
+  }, [condiments]);
+
+  useEffect(() => {
+    localStorage.setItem('language', language);
+  }, [language]);
+
   const handleGenerateRecipe = useCallback(async () => {
     if (pantryItems.length === 0) {
-      setError('Your pantry is empty! Please add some ingredients first.');
+      setError(translations.pantryEmptyError[language]);
       return;
     }
 
@@ -40,25 +95,40 @@ const App: React.FC = () => {
     setError(null);
     setRecipe(null);
 
-    const ingredientsList = pantryItems.map(item => `${item.quantity} of ${item.name}`);
+    const ingredientsList = pantryItems.map(item => {
+      let ingredientString = `${item.quantity} of ${item.name}`;
+      if (item.expiryDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const expiry = new Date(item.expiryDate);
+        const diffTime = expiry.getTime() - today.getTime();
+        const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (daysLeft < 0) {
+            ingredientString += ` (expired ${-daysLeft} day(s) ago)`;
+        } else if (daysLeft <= 7) {
+            ingredientString += ` (expires in ${daysLeft} day(s))`;
+        }
+      }
+      return ingredientString;
+    });
 
     try {
-      const result = await generateRecipe(ingredientsList, mealType, dietaryRestrictions);
+      const result = await generateRecipe(ingredientsList, mealType, dietaryRestrictions, craving, maxTotalTime, equipment, condiments, language);
       setRecipe(result);
     } catch (err) {
       console.error(err);
-      setError('Sorry, I couldn\'t come up with a recipe. Please try again.');
+      setError(translations.recipeError[language]);
     } finally {
       setIsLoading(false);
     }
-  }, [pantryItems, mealType, dietaryRestrictions]);
+  }, [pantryItems, mealType, dietaryRestrictions, craving, maxTotalTime, equipment, condiments, language]);
   
   const handleCookRecipe = useCallback((usedIngredients: string[]) => {
     setPantryItems(currentPantry => {
       const pantryItemsToRemove = new Set<string>();
       
       usedIngredients.forEach(usedIngredient => {
-        // Find which pantry item name is mentioned in the recipe ingredient
         const pantryItemMatch = currentPantry.find(pantryItem => 
           usedIngredient.toLowerCase().includes(pantryItem.name.toLowerCase())
         );
@@ -70,24 +140,41 @@ const App: React.FC = () => {
 
       return currentPantry.filter(item => !pantryItemsToRemove.has(item.id));
     });
-    // Clear the current recipe to encourage generating a new one
     setRecipe(null); 
   }, []);
 
-  const mealTypes = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert'];
-  const diets = ['None', 'Vegetarian', 'Vegan', 'Gluten-Free', 'Keto', 'Paleo'];
+  const mealTypes = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert', 'Appetizer', 'Soup', 'Baking/Cake', 'Cocktail', 'Cold Drink'];
+  const diets = ['None', 'Vegetarian', 'Vegan', 'Gluten-Free', 'Keto', 'Paleo', 'Muscle Building', 'Weight Loss', 'Low Glycemic', 'Heart-Healthy'];
+  const cookingTimes = ['Any', '< 15 mins', '< 30 mins', '< 1 hour', '> 1 hour'];
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
-      <Header />
+      <Header language={language} setLanguage={setLanguage} />
       <main className="container mx-auto p-4 md:p-8">
         <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-lg p-6 md:p-8">
           <div className="space-y-6">
-            <PantryManager items={pantryItems} setItems={setPantryItems} />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <PantryManager items={pantryItems} setItems={setPantryItems} language={language} />
+            <EquipmentManager equipment={equipment} setEquipment={setEquipment} language={language} />
+            <CondimentsManager condiments={condiments} setCondiments={setCondiments} language={language} />
+            
+            <div>
+              <label htmlFor="craving" className="block text-lg font-semibold text-gray-700 mb-2">
+                {translations.cravingLabel[language]}
+              </label>
+              <input
+                id="craving"
+                type="text"
+                value={craving}
+                onChange={(e) => setCraving(e.target.value)}
+                placeholder={translations.cravingPlaceholder[language]}
+                className="w-full p-3 bg-gray-100 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <label htmlFor="mealType" className="block text-lg font-semibold text-gray-700 mb-2">
-                  Meal Type
+                  {translations.mealType[language]}
                 </label>
                 <select
                   id="mealType"
@@ -96,13 +183,13 @@ const App: React.FC = () => {
                   className="w-full p-3 bg-gray-100 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
                 >
                   {mealTypes.map((type) => (
-                    <option key={type} value={type}>{type}</option>
+                    <option key={type} value={type}>{translations.mealTypes[type as keyof typeof translations.mealTypes][language]}</option>
                   ))}
                 </select>
               </div>
               <div>
                 <label htmlFor="diet" className="block text-lg font-semibold text-gray-700 mb-2">
-                  Dietary Preferences
+                  {translations.dietaryPreferences[language]}
                 </label>
                 <select
                   id="diet"
@@ -111,7 +198,22 @@ const App: React.FC = () => {
                   className="w-full p-3 bg-gray-100 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
                 >
                   {diets.map((diet) => (
-                    <option key={diet} value={diet}>{diet}</option>
+                    <option key={diet} value={diet}>{translations.diets[diet as keyof typeof translations.diets][language]}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="maxTime" className="block text-lg font-semibold text-gray-700 mb-2">
+                  {translations.maxTimeLabel[language]}
+                </label>
+                <select
+                  id="maxTime"
+                  value={maxTotalTime}
+                  onChange={(e) => setMaxTotalTime(e.target.value)}
+                  className="w-full p-3 bg-gray-100 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                >
+                  {cookingTimes.map((time) => (
+                    <option key={time} value={time}>{translations.cookingTimes[time as keyof typeof translations.cookingTimes][language]}</option>
                   ))}
                 </select>
               </div>
@@ -129,10 +231,10 @@ const App: React.FC = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Whipping up some ideas...
+                    {translations.loadingButton[language]}
                   </>
                 ) : (
-                  'Generate Recipe From Pantry'
+                  translations.generateButton[language]
                 )}
               </button>
             </div>
@@ -141,12 +243,12 @@ const App: React.FC = () => {
 
         <div className="mt-10 max-w-3xl mx-auto">
           {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg" role="alert">{error}</div>}
-          {isLoading && <Loader />}
-          {recipe && !isLoading && <RecipeCard recipe={recipe} onCook={handleCookRecipe} />}
+          {isLoading && <Loader language={language} />}
+          {recipe && !isLoading && <RecipeCard recipe={recipe} onCook={handleCookRecipe} language={language} />}
         </div>
       </main>
       <footer className="text-center py-6 text-gray-500 text-sm">
-        <p>Powered by Gemini. For inspiration only, please cook responsibly.</p>
+        <p>{translations.footer[language]}</p>
       </footer>
     </div>
   );

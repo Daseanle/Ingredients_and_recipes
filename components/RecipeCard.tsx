@@ -1,9 +1,11 @@
 import React from 'react';
 import type { Recipe } from '../types';
+import { translations } from '../lib/translations';
 
 interface RecipeCardProps {
   recipe: Recipe;
   onCook: (usedIngredients: string[]) => void;
+  language: 'en' | 'zh';
 }
 
 const TimeInfo: React.FC<{ label: string; value: string }> = ({ label, value }) => (
@@ -13,8 +15,8 @@ const TimeInfo: React.FC<{ label: string; value: string }> = ({ label, value }) 
     </div>
 );
 
-export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onCook }) => {
-  const { title, description, ingredients, instructions, prepTime, cookTime } = recipe;
+export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onCook, language }) => {
+  const { title, description, ingredients, instructions, prepTime, cookTime, totalTime } = recipe;
 
   return (
     <div className="bg-white rounded-2xl shadow-lg overflow-hidden animate-fade-in">
@@ -23,14 +25,15 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onCook }) => {
         <h2 className="text-3xl font-extrabold text-gray-900 mb-3">{title}</h2>
         <p className="text-gray-600 mb-6">{description}</p>
         
-        <div className="grid grid-cols-2 gap-4 mb-8">
-            <TimeInfo label="Prep Time" value={prepTime} />
-            <TimeInfo label="Cook Time" value={cookTime} />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+            <TimeInfo label={translations.prepTime[language]} value={prepTime} />
+            <TimeInfo label={translations.cookTime[language]} value={cookTime} />
+            {totalTime && <TimeInfo label={translations.totalTime[language]} value={totalTime} />}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
-            <h3 className="text-xl font-bold text-gray-800 mb-4 border-b-2 border-green-500 pb-2">Ingredients</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-4 border-b-2 border-green-500 pb-2">{translations.ingredients[language]}</h3>
             <ul className="space-y-2 list-disc list-inside text-gray-700">
               {ingredients.map((ingredient, index) => (
                 <li key={index}>{ingredient}</li>
@@ -38,7 +41,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onCook }) => {
             </ul>
           </div>
           <div>
-            <h3 className="text-xl font-bold text-gray-800 mb-4 border-b-2 border-green-500 pb-2">Instructions</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-4 border-b-2 border-green-500 pb-2">{translations.instructions[language]}</h3>
             <ol className="space-y-3 text-gray-700">
               {instructions.map((step, index) => (
                 <li key={index} className="flex">
@@ -54,7 +57,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onCook }) => {
                 onClick={() => onCook(ingredients)}
                 className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-blue-300 transition-all duration-300 ease-in-out transform hover:scale-105"
             >
-                I Made This! (Update Pantry)
+                {translations.madeThisButton[language]}
             </button>
         </div>
       </div>

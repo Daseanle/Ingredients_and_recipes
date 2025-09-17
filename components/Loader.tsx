@@ -1,15 +1,13 @@
-
 import React from 'react';
 import { ChefHatIcon } from './icons/ChefHatIcon';
+import { translations } from '../lib/translations';
 
-export const Loader: React.FC = () => {
-  const messages = [
-    "Simmering ideas...",
-    "Preheating the oven...",
-    "Chopping vegetables...",
-    "Consulting the culinary cosmos...",
-    "Whisking up a masterpiece..."
-  ];
+interface LoaderProps {
+  language: 'en' | 'zh';
+}
+
+export const Loader: React.FC<LoaderProps> = ({ language }) => {
+  const messages = translations.loadingMessages[language];
   const [message, setMessage] = React.useState(messages[0]);
 
   React.useEffect(() => {
@@ -17,7 +15,7 @@ export const Loader: React.FC = () => {
       setMessage(messages[Math.floor(Math.random() * messages.length)]);
     }, 2000);
     return () => clearInterval(intervalId);
-  }, []);
+  }, [messages]);
 
   return (
     <div className="text-center p-8 bg-white rounded-2xl shadow-lg">
